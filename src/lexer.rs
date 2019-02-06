@@ -72,6 +72,16 @@ impl LexerToken {
             bin_op: Some(bin_op)
         }
     }
+
+    fn from_rel_op(rel_op: RelOp) -> LexerToken {
+        LexerToken {
+            token_type: TokenType::REL_OP,
+            label: None,
+            number: None,
+            rel_op: Some(rel_op),
+            bin_op: None
+        }
+    }
 }
 
 struct LexerState {
@@ -107,13 +117,20 @@ enum StateResponse {
     DONE
 }
 
-fn processState(state: LexerStateDescriptor, cur_char: char) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
+fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
     let next_state: LexerStateDescriptor;
 
     match state {
         LexerStateDescriptor::START => {
+            // Starting point. Encompases single character tokens.
             if cur_char.is_alphabetic() {
                 // Starts an IDENTIFIER
+            }
+            else if cur_char.is_numeric() {
+                // Starts a NUMERIC
+            }
+            else if cur_char.is_whitespace() {
+                // Ignore whitespace
             }
             match cur_char {
                 '(' => {
@@ -174,7 +191,6 @@ fn processState(state: LexerStateDescriptor, cur_char: char) -> Result<(StateRes
                     return Err("Unrecognised character")
                 }
             }
-            // Starting point. Encompases single character tokens.
         }
         LexerStateDescriptor::IDENTIFIER => {
             // Alphanumeric identifier. includes keywords
@@ -191,12 +207,69 @@ fn processState(state: LexerStateDescriptor, cur_char: char) -> Result<(StateRes
         }
         LexerStateDescriptor::EQ => {
             // An equal sign. Could be assignment or equality
+            match cur_char {
+                '=' => {
+                    // Equality comparitor
+                    let resp = LexerToken::from_rel_op(RelOp::EQUAL);
+
+                    return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
+                }
+                '<' => {
+                    // LTE comparator
+                    let resp = LexerToken::from_rel_op(RelOp::LESS_THAN_EQ);
+
+                    return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
+                }
+                '>' => {
+                    // GTE comparator
+                    let resp = LexerToken::from_rel_op(RelOp::GREATER_THAN_EQ);
+
+                    return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
+                }
+                _ => {
+                    // Assignment token.
+                    // Backtrace and continue
+                    let resp = LexerToken::from_single(TokenType::ASSIGN);
+
+                    return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                }
+            }
         }
         LexerStateDescriptor::GT => {
             // GT sign. Could be followed by an equal.
+            match cur_char {
+                '=' => {
+                    // GTE comparator
+                    let resp = LexerToken::from_rel_op(RelOp::GREATER_THAN_EQ);
+
+                    return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
+                }
+                _ => {
+                    // GT comparator
+                    // Backtrace and continue
+                    let resp = LexerToken::from_rel_op(RelOp::LESS_THAN);
+
+                    return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                }
+            }
         }
         LexerStateDescriptor::LT => {
             // LT sign. Could be followed by an equal.
+            match cur_char {
+                '=' => {
+                    // LTE comparator
+                    let resp = LexerToken::from_rel_op(RelOp::LESS_THAN_EQ);
+
+                    return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
+                }
+                _ => {
+                    // LT comparator
+                    // Backtrace and continue
+                    let resp = LexerToken::from_rel_op(RelOp::LESS_THAN);
+
+                    return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                }
+            }
         }
         _ => {
             println!("This should never happen");
