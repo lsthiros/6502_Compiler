@@ -9,9 +9,7 @@ enum LexerStateDescriptor {
     NUMERIC_FLOAT,
     GT,
     LT,
-    EQ,
-    ACCEPT,
-    ABORT
+    EQ
 }
 
 enum TokenType {
@@ -26,14 +24,15 @@ enum TokenType {
     COMMA,
     ASSIGN,
     REL_OP,
-    BIN_OP
+    BIN_OP,
+    NUMBER
 }
 
 enum BinOp {
     MULTIPLY,
     DIVIDE,
     ADD,
-    SUBTRACT,
+    SUBTRACT
 }
 
 enum RelOp {
@@ -82,10 +81,31 @@ impl LexerToken {
             bin_op: None
         }
     }
+
+    fn from_label(label: String) -> LexerToken {
+        LexerToken {
+            token_type: TokenType::IDENTIFIER,
+            label: Some(label),
+            number: None,
+            rel_op: None,
+            bin_op: None
+        }
+    }
+
+    fn from_number(number: f64) -> LexerToken {
+        LexerToken {
+            token_type: TokenType::NUMBER,
+            label: None,
+            number: Some(number),
+            rel_op: None,
+            bin_op: None
+        }
+    }
 }
 
 struct LexerState {
     state: LexerStateDescriptor,
+    itt: Chars,
     latest: Option<char>,
     position: u32,
     backtrace: bool
@@ -110,7 +130,7 @@ impl LexerState {
     }
 }
 
-// Pass in a character
+#[derive(PartialEq)]
 enum StateResponse {
     CONTINUE,
     BACKTRACE,
@@ -125,12 +145,17 @@ fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>)
             // Starting point. Encompases single character tokens.
             if cur_char.is_alphabetic() {
                 // Starts an IDENTIFIER
+                id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::IDENTIFIER, None))
             }
             else if cur_char.is_numeric() {
                 // Starts a NUMERIC
+                id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC, None))
             }
             else if cur_char.is_whitespace() {
                 // Ignore whitespace
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, None))
             }
             match cur_char {
                 '(' => {
@@ -194,16 +219,89 @@ fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>)
         }
         LexerStateDescriptor::IDENTIFIER => {
             // Alphanumeric identifier. includes keywords
+            if cur_char.is_alphanumeric() {
+                id.push(cur_char);
+            } else {
+                let full_id: String = id.iter().collect();
+                id.clear();
+                match full_id.as_str() {
+                    "def" => {
+                        let resp = LexerToken::from_single(TokenType::DEF);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                    }
+                    "return" => {
+                        let resp = LexerToken::from_single(TokenType::DEF);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+
+                    }
+                    "if" => {
+                        let resp = LexerToken::from_single(TokenType::IF);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                    }
+                    "then" => {
+                        let resp = LexerToken::from_single(TokenType::THEN);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                    }
+                    "else" => {
+                        let resp = LexerToken::from_single(TokenType::ELSE);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                    }
+                    _ => {
+                        let resp = LexerToken::from_label(full_id);
+                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                    }
+                }
+            }
         }
         LexerStateDescriptor::NUMERIC => {
             // A number literal. Could be a float or int
+            if cur_char.is_numeric() {
+                id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC, None))
+            }
+            else if cur_char == '.' {
+                id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC_DOT, None))
+            }
+            else {
+                let full_id: String = id.iter().collect();
+                id.clear();
+                if let Ok(new_number) = full_id.parse::<f64>() {
+                    let resp = LexerToken::from_number(new_number);
+                    return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                }
+                else {
+                    return Err("Could not construct integer value");
+                }
+            }
         }
         LexerStateDescriptor::NUMERIC_DOT => {
             // A number literal with a period. Another number must
             // follow. This will be a float.
+            if cur_char.is_numeric() {
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC_FLOAT, None))
+            }
+            else {
+                return Err("Error lexing a floating point constant, expected numbers after '.'");
+            }
         }
         LexerStateDescriptor::NUMERIC_FLOAT => {
             // A full float literal.
+            if cur_char.is_numeric() {
+                id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC_FLOAT, None))
+            }
+            else {
+                let full_id: String = id.iter().collect();
+                id.clear();
+                if let Ok(new_number) = full_id.parse::<f64>() {
+                    let resp = LexerToken::from_number(new_number);
+                    return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
+                }
+                else {
+                    return Err("Could not construct float value");
+                }
+            }
         }
         LexerStateDescriptor::EQ => {
             // An equal sign. Could be assignment or equality
@@ -271,9 +369,6 @@ fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>)
                 }
             }
         }
-        _ => {
-            println!("This should never happen");
-        }
     }
     Err("Hahahaha whoops")
 }
@@ -281,6 +376,7 @@ fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>)
 pub fn lex_string(lex_string: String) {
     let mut state = LexerState {
         state: LexerStateDescriptor::START,
+        itt: "".chars(),
         latest: None,
         position: 0,
         backtrace: false
@@ -288,19 +384,9 @@ pub fn lex_string(lex_string: String) {
 
     let mut cur_str: Vec<char>;
     let mut iterator = lex_string.chars();
+    let mut response: StateResponse = StateResponse::CONTINUE;
 
-    while state.state != LexerStateDescriptor::ABORT &&
-        state.state != LexerStateDescriptor::ACCEPT {
+    while response != StateResponse::DONE {
 
-            if let Some(cur_char) = state.next(&iterator) {
-                match state.state {
-
-            }
-            else if state.state == LexerStateDescriptor::START {
-                state.state = LexerStateDescriptor::ACCEPT;
-            }
-            else {
-                state.state = LexerStateDescriptor::ABORT;
-            }
     }
 }
