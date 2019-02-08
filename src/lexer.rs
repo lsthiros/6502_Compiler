@@ -103,24 +103,24 @@ impl LexerToken {
     }
 }
 
-struct LexerState {
+struct LexerState <'a>{
     state: LexerStateDescriptor,
-    itt: Chars,
+    itt: Chars<'a>,
     latest: Option<char>,
     position: u32,
     backtrace: bool
 }
 
-impl LexerState {
+impl<'a> LexerState<'a> {
     // Get the next character of the text stream
     // If the stream is empty, return None
-    fn next(&mut self, mut token_iterator: &Chars) -> Option<char> {
+    fn next(&mut self) -> Option<char> {
         if self.backtrace {
             self.backtrace = false;
             return self.latest;
         }
 
-        let next_char: Option<char> = token_iterator.next();
+        let next_char: Option<char> = self.itt.next();
         self.latest = next_char;
         return next_char;
     }
@@ -137,7 +137,7 @@ enum StateResponse {
     DONE
 }
 
-fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
+fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
     let next_state: LexerStateDescriptor;
 
     match state {
@@ -376,14 +376,13 @@ fn processState(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>)
 pub fn lex_string(lex_string: String) {
     let mut state = LexerState {
         state: LexerStateDescriptor::START,
-        itt: "".chars(),
+        itt: lex_string.chars(),
         latest: None,
         position: 0,
         backtrace: false
     };
 
     let mut cur_str: Vec<char>;
-    let mut iterator = lex_string.chars();
     let mut response: StateResponse = StateResponse::CONTINUE;
 
     while response != StateResponse::DONE {
