@@ -1,5 +1,6 @@
 use std::str::Chars;
 
+#[derive(Debug)]
 #[derive(PartialEq)]
 enum LexerStateDescriptor {
     START,
@@ -12,6 +13,7 @@ enum LexerStateDescriptor {
     EQ
 }
 
+#[derive(Debug)]
 enum TokenType {
     IDENTIFIER,
     DEF,
@@ -28,6 +30,7 @@ enum TokenType {
     NUMBER
 }
 
+#[derive(Debug)]
 enum BinOp {
     MULTIPLY,
     DIVIDE,
@@ -35,6 +38,7 @@ enum BinOp {
     SUBTRACT
 }
 
+#[derive(Debug)]
 enum RelOp {
     LESS_THAN,
     LESS_THAN_EQ,
@@ -43,7 +47,8 @@ enum RelOp {
     GREATER_THAN_EQ
 }
 
-struct LexerToken {
+#[derive(Debug)]
+pub struct LexerToken {
     token_type: TokenType,
     label: Option<String>,
     number: Option<f64>,
@@ -134,7 +139,6 @@ impl<'a> LexerState<'a> {
 enum StateResponse {
     CONTINUE,
     BACKTRACE,
-    DONE
 }
 
 fn finish_float(id: &mut Vec<char>) -> Result<LexerToken, &'static str> {
@@ -157,7 +161,7 @@ fn finish_id(id: &mut Vec<char>) -> LexerToken {
             return LexerToken::from_single(TokenType::DEF);
         }
         "return" => {
-            return LexerToken::from_single(TokenType::DEF);
+            return LexerToken::from_single(TokenType::RETURN);
         }
         "if" => {
             return LexerToken::from_single(TokenType::IF);
@@ -174,7 +178,7 @@ fn finish_id(id: &mut Vec<char>) -> LexerToken {
     }
 }
 
-fn process_eof(state: LexerStateDescriptor, id: &mut Vec<char>) -> Result<Option<LexerToken>, &'static str> {
+fn process_eof(state: &LexerStateDescriptor, id: &mut Vec<char>) -> Result<Option<LexerToken>, &'static str> {
     match state {
         LexerStateDescriptor::START => {
             return Ok(None)
@@ -187,7 +191,15 @@ fn process_eof(state: LexerStateDescriptor, id: &mut Vec<char>) -> Result<Option
                 return Ok(Some(resp))
             }
             else {
-                return Err("Could not construct a float after EOF")
+                return Err("Could not construct an integer after EOF")
+            }
+        }
+        LexerStateDescriptor::NUMERIC_FLOAT => {
+            if let Ok(resp) = finish_float(id) {
+                return Ok(Some(resp))
+            }
+            else {
+                return Err("Could not construct an float after EOF")
             }
         }
         LexerStateDescriptor::LT => {
@@ -205,7 +217,7 @@ fn process_eof(state: LexerStateDescriptor, id: &mut Vec<char>) -> Result<Option
     }
 }
 
-fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
+fn process_state(state: &LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
 
     match state {
         LexerStateDescriptor::START => {
@@ -288,6 +300,7 @@ fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>
             // Alphanumeric identifier. includes keywords
             if cur_char.is_alphanumeric() {
                 id.push(cur_char);
+                return Ok((StateResponse::CONTINUE, LexerStateDescriptor::IDENTIFIER, None))
             } else {
                 return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(finish_id(id))))
             }
@@ -403,10 +416,9 @@ fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>
             }
         }
     }
-    Err("Hahahaha whoops")
 }
 
-pub fn lex_string(lex_string: String) {
+pub fn lex_string(lex_string: String) -> Vec<LexerToken> {
     let mut state = LexerState {
         state: LexerStateDescriptor::START,
         itt: lex_string.chars(),
@@ -415,10 +427,25 @@ pub fn lex_string(lex_string: String) {
         backtrace: false
     };
 
-    let mut cur_str: Vec<char>;
-    let mut response: StateResponse = StateResponse::CONTINUE;
+    let mut cur_str: Vec<char> = Vec::new();
+    let mut tokens: Vec<LexerToken> = Vec::new();
+    let mut cur_char = state.next();
 
-    while response != StateResponse::DONE {
-
+    while cur_char.is_some() {
+        let (response, descriptor, cur_token) = process_state(&state.state, cur_char.unwrap(), &mut cur_str).unwrap();
+        if let Some(token) = cur_token {
+            tokens.push(token);
+        }
+        state.state = descriptor;
+        if response == StateResponse::BACKTRACE {
+            state.backtrace();
+        }
+        cur_char = state.next();
     }
+
+    if let Some(final_token) = process_eof(&state.state, &mut cur_str).unwrap() {
+        tokens.push(final_token)
+    }
+
+    return tokens;
 }

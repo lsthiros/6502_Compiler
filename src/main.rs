@@ -1,6 +1,18 @@
 mod lexer;
 
+use std::fs;
+use std::env;
+
 fn main() {
-    println!("Hello, world!");
-    lexer::lex_string(String::from("Hello"))
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: [invocation] filename")
+    }
+    else {
+        let contents: String = fs::read_to_string(&args[1]).expect("Could not open file");
+        for token in lexer::lex_string(contents) {
+            println!("{:?}", token)
+        }
+    }
 }
