@@ -137,8 +137,75 @@ enum StateResponse {
     DONE
 }
 
+fn finish_float(id: &mut Vec<char>) -> Result<LexerToken, &'static str> {
+    let full_id: String = id.iter().collect();
+    id.clear();
+    if let Ok(new_number) = full_id.parse::<f64>() {
+        let resp = LexerToken::from_number(new_number);
+        return Ok(resp)
+    }
+    else {
+        return Err("Could not construct integer value");
+    }
+}
+
+fn finish_id(id: &mut Vec<char>) -> LexerToken {
+    let full_id: String = id.iter().collect();
+    id.clear();
+    match full_id.as_str() {
+        "def" => {
+            return LexerToken::from_single(TokenType::DEF);
+        }
+        "return" => {
+            return LexerToken::from_single(TokenType::DEF);
+        }
+        "if" => {
+            return LexerToken::from_single(TokenType::IF);
+        }
+        "then" => {
+            return LexerToken::from_single(TokenType::THEN);
+        }
+        "else" => {
+            return LexerToken::from_single(TokenType::ELSE);
+        }
+        _ => {
+            return LexerToken::from_label(full_id);
+        }
+    }
+}
+
+fn process_eof(state: LexerStateDescriptor, id: &mut Vec<char>) -> Result<Option<LexerToken>, &'static str> {
+    match state {
+        LexerStateDescriptor::START => {
+            return Ok(None)
+        }
+        LexerStateDescriptor::IDENTIFIER => {
+            return Ok(Some(finish_id(id)))
+        }
+        LexerStateDescriptor::NUMERIC => {
+            if let Ok(resp) = finish_float(id) {
+                return Ok(Some(resp))
+            }
+            else {
+                return Err("Could not construct a float after EOF")
+            }
+        }
+        LexerStateDescriptor::LT => {
+            return Ok(Some(LexerToken::from_rel_op(RelOp::LESS_THAN)))
+        }
+        LexerStateDescriptor::GT => {
+            return Ok(Some(LexerToken::from_rel_op(RelOp::GREATER_THAN)))
+        }
+        LexerStateDescriptor::EQ => {
+            return Ok(Some(LexerToken::from_single(TokenType::ASSIGN)))
+        }
+        _ => {
+            return Err("Unexpected EOF")
+        }
+    }
+}
+
 fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>) -> Result<(StateResponse, LexerStateDescriptor, Option<LexerToken>), &'static str> {
-    let next_state: LexerStateDescriptor;
 
     match state {
         LexerStateDescriptor::START => {
@@ -222,35 +289,7 @@ fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>
             if cur_char.is_alphanumeric() {
                 id.push(cur_char);
             } else {
-                let full_id: String = id.iter().collect();
-                id.clear();
-                match full_id.as_str() {
-                    "def" => {
-                        let resp = LexerToken::from_single(TokenType::DEF);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-                    }
-                    "return" => {
-                        let resp = LexerToken::from_single(TokenType::DEF);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-
-                    }
-                    "if" => {
-                        let resp = LexerToken::from_single(TokenType::IF);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-                    }
-                    "then" => {
-                        let resp = LexerToken::from_single(TokenType::THEN);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-                    }
-                    "else" => {
-                        let resp = LexerToken::from_single(TokenType::ELSE);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-                    }
-                    _ => {
-                        let resp = LexerToken::from_label(full_id);
-                        return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
-                    }
-                }
+                return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(finish_id(id))))
             }
         }
         LexerStateDescriptor::NUMERIC => {
@@ -264,14 +303,11 @@ fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>
                 return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC_DOT, None))
             }
             else {
-                let full_id: String = id.iter().collect();
-                id.clear();
-                if let Ok(new_number) = full_id.parse::<f64>() {
-                    let resp = LexerToken::from_number(new_number);
+                if let Ok(resp) = finish_float(id) {
                     return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
                 }
                 else {
-                    return Err("Could not construct integer value");
+                    return Err("Was unable to create a numeric constant")
                 }
             }
         }
@@ -292,14 +328,11 @@ fn process_state(state: LexerStateDescriptor, cur_char: char, id: &mut Vec<char>
                 return Ok((StateResponse::CONTINUE, LexerStateDescriptor::NUMERIC_FLOAT, None))
             }
             else {
-                let full_id: String = id.iter().collect();
-                id.clear();
-                if let Ok(new_number) = full_id.parse::<f64>() {
-                    let resp = LexerToken::from_number(new_number);
+                if let Ok(resp) = finish_float(id) {
                     return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
                 }
                 else {
-                    return Err("Could not construct float value");
+                    return Err("Was unable to create a float constant")
                 }
             }
         }
