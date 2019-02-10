@@ -269,7 +269,7 @@ fn process_state(state: &LexerStateDescriptor, cur_char: char, id: &mut Vec<char
                 }
                 '/' => {
                     // DIVIDE token
-                    let resp = LexerToken::from_bin_op(BinOp::SUBTRACT);
+                    let resp = LexerToken::from_bin_op(BinOp::DIVIDE);
 
                     return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
                 }
@@ -391,7 +391,7 @@ fn process_state(state: &LexerStateDescriptor, cur_char: char, id: &mut Vec<char
                 _ => {
                     // GT comparator
                     // Backtrace and continue
-                    let resp = LexerToken::from_rel_op(RelOp::LESS_THAN);
+                    let resp = LexerToken::from_rel_op(RelOp::GREATER_THAN);
 
                     return Ok((StateResponse::BACKTRACE, LexerStateDescriptor::START, Some(resp)))
                 }
