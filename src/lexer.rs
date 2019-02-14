@@ -14,7 +14,7 @@ enum LexerStateDescriptor {
 }
 
 #[derive(Debug)]
-enum TokenType {
+pub enum TokenType {
     IDENTIFIER,
     DEF,
     IF,

@@ -1,6 +1,8 @@
 # Kaleidoscope to 6502 asm compiler
 
-## Motivation
+## Project Overview
+
+### Motivation
 This project is intended to be a dual exploration into both Rust and a compiler
 tech. The idea to start this project came from the 6502 assembler created
 earlier. This project should also help further understand the 6502 architecture
@@ -16,6 +18,7 @@ Rust will make the project more complicated, it will provide a learning
 opportuity.
 
 The learning goals of this project are as follows:
+
 * DAG creation
 * SSA creation
 * Machine Code selection and emitting:
@@ -23,6 +26,7 @@ The learning goals of this project are as follows:
   * Code selection
 * The Rust programming language
 
-## Scope
+### Scope
 This project will create a compiler that is capable of transforming a *single*
 Kaleidoscope code file into a hex file 
+
