@@ -2,6 +2,7 @@ use std::str::Chars;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Copy, Clone)]
 enum LexerStateDescriptor {
     START,
     IDENTIFIER,
@@ -14,6 +15,8 @@ enum LexerStateDescriptor {
 }
 
 #[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Copy, Clone)]
 pub enum TokenType {
     IDENTIFIER,
     DEF,
@@ -31,7 +34,8 @@ pub enum TokenType {
 }
 
 #[derive(Debug)]
-enum BinOp {
+#[derive(Copy, Clone)]
+pub enum BinOp {
     MULTIPLY,
     DIVIDE,
     ADD,
@@ -39,7 +43,8 @@ enum BinOp {
 }
 
 #[derive(Debug)]
-enum RelOp {
+#[derive(Copy, Clone)]
+pub enum RelOp {
     LESS_THAN,
     LESS_THAN_EQ,
     EQUAL,
@@ -49,11 +54,11 @@ enum RelOp {
 
 #[derive(Debug)]
 pub struct LexerToken {
-    token_type: TokenType,
-    label: Option<String>,
-    number: Option<f64>,
-    rel_op: Option<RelOp>,
-    bin_op: Option<BinOp>
+    pub token_type: TokenType,
+    pub label: Option<String>,
+    pub number: Option<f64>,
+    pub rel_op: Option<RelOp>,
+    pub bin_op: Option<BinOp>
 }
 
 impl LexerToken {
