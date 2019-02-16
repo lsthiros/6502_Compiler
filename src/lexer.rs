@@ -20,6 +20,7 @@ enum LexerStateDescriptor {
 pub enum TokenType {
     IDENTIFIER,
     DEF,
+    EXTERN,
     IF,
     THEN,
     ELSE,
@@ -53,6 +54,7 @@ pub enum RelOp {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct LexerToken {
     pub token_type: TokenType,
     pub label: Option<String>,
@@ -176,6 +178,9 @@ fn finish_id(id: &mut Vec<char>) -> LexerToken {
         }
         "else" => {
             return LexerToken::from_single(TokenType::ELSE);
+        }
+        "extern" => {
+            return LexerToken::from_single(TokenType::EXTERN);
         }
         _ => {
             return LexerToken::from_label(full_id);
