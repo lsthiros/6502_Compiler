@@ -1,23 +1,13 @@
-use std::vec;
-use std::iter;
 use std::iter::Peekable;
 use std::error::Error;
 use std::fmt;
 
 use crate::lexer::LexerToken;
 use crate::lexer::TokenType;
+use crate::lexer::MulOp;
+use crate::lexer::SumOp;
 
-enum mul_op {
-    Multiply,
-    Divide
-}
-
-enum sum_op {
-    Add,
-    Subtract
-}
-
-enum factor {
+enum Factor {
     Id(String),
     Numeric(f64)
 }
@@ -92,6 +82,36 @@ struct FuncDecl {
     args: Vec<String>
 }
 
+enum Term<'a> {
+    Node{
+        left: &'a Term<'a>,
+        mul_type: MulOp
+    },
+    Terminal(Factor)
+}
+
+
+fn get_factor<I>(token_stream: &mut TokenStream<I>) -> Result<Factor, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    if let Some(id) = token_stream.accept(TokenType::IDENTIFIER) {
+        return Ok(Factor::Id(id.label.unwrap()))
+    }
+    let numeric = token_stream.expect(TokenType::NUMBER)?;
+    return Ok(Factor::Numeric(numeric.number.unwrap()))
+}
+
+fn get_term<'a, I>(token_stream: &mut TokenStream<I>) -> Result<&'a Term, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    if let Some(op) = token_stream.accept(TokenType::MUL_OP) {
+        let ret = Term::Node {
+            mul_type: op.mul_op.unwrap(),
+            left: get_term(token_stream)?
+        };
+        return Ok(&ret)
+    }
+
+    let terminal: Term = Term::Terminal(get_factor(token_stream)?);
+    return Ok(&terminal)
+}
+
 fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, UnexpectedTokenError> where I: Iterator<Item = LexerToken>{
     let name_token = token_stream.expect(TokenType::IDENTIFIER)?;
     let name: String = name_token.label.unwrap();
@@ -127,6 +147,9 @@ fn parse_stream(token_stream: Vec<LexerToken>) -> Result<String, UnexpectedToken
     }
     else if let Some(ext) = stream.accept(TokenType::EXTERN) {
         let func = get_func_decl(&mut stream)?;
+    }
+    else {
+
     }
     unimplemented!();
 }

@@ -30,15 +30,21 @@ pub enum TokenType {
     COMMA,
     ASSIGN,
     REL_OP,
-    BIN_OP,
+    MUL_OP,
+    SUM_OP,
     NUMBER
 }
 
 #[derive(Debug)]
 #[derive(Copy, Clone)]
-pub enum BinOp {
+pub enum MulOp {
     MULTIPLY,
-    DIVIDE,
+    DIVIDE
+}
+
+#[derive(Debug)]
+#[derive(Copy, Clone)]
+pub enum SumOp {
     ADD,
     SUBTRACT
 }
@@ -60,7 +66,8 @@ pub struct LexerToken {
     pub label: Option<String>,
     pub number: Option<f64>,
     pub rel_op: Option<RelOp>,
-    pub bin_op: Option<BinOp>
+    pub sum_op: Option<SumOp>,
+    pub mul_op: Option<MulOp>
 }
 
 impl LexerToken {
@@ -70,17 +77,30 @@ impl LexerToken {
             label: None,
             number: None,
             rel_op: None,
-            bin_op: None
+            mul_op: None,
+            sum_op: None
         }
     }
 
-    fn from_bin_op(bin_op:BinOp) -> LexerToken {
+    fn from_mul_op(mul_op: MulOp) -> LexerToken {
         LexerToken {
-            token_type: TokenType::BIN_OP,
+            token_type: TokenType::MUL_OP,
             label: None,
             number: None,
             rel_op: None,
-            bin_op: Some(bin_op)
+            mul_op: Some(mul_op),
+            sum_op: None
+        }
+    }
+
+    fn from_sum_op(sum_op: SumOp) -> LexerToken {
+        LexerToken {
+            token_type: TokenType::SUM_OP,
+            label: None,
+            number: None,
+            rel_op: None,
+            mul_op: None,
+            sum_op: Some(sum_op)
         }
     }
 
@@ -90,7 +110,8 @@ impl LexerToken {
             label: None,
             number: None,
             rel_op: Some(rel_op),
-            bin_op: None
+            mul_op: None,
+            sum_op: None
         }
     }
 
@@ -100,7 +121,8 @@ impl LexerToken {
             label: Some(label),
             number: None,
             rel_op: None,
-            bin_op: None
+            mul_op: None,
+            sum_op: None
         }
     }
 
@@ -110,7 +132,8 @@ impl LexerToken {
             label: None,
             number: Some(number),
             rel_op: None,
-            bin_op: None
+            mul_op: None,
+            sum_op: None
         }
     }
 }
@@ -267,25 +290,25 @@ fn process_state(state: &LexerStateDescriptor, cur_char: char, id: &mut Vec<char
                 }
                 '+' => {
                     // PLUS token
-                    let resp = LexerToken::from_bin_op(BinOp::ADD);
+                    let resp = LexerToken::from_sum_op(SumOp::ADD);
 
                     return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
                 }
                 '-' => {
                     // MINUS token
-                    let resp = LexerToken::from_bin_op(BinOp::SUBTRACT);
+                    let resp = LexerToken::from_sum_op(SumOp::SUBTRACT);
 
                     return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
                 }
                 '/' => {
                     // DIVIDE token
-                    let resp = LexerToken::from_bin_op(BinOp::DIVIDE);
+                    let resp = LexerToken::from_mul_op(MulOp::DIVIDE);
 
                     return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
                 }
                 '*' => {
                     // MULTIPLY token
-                    let resp = LexerToken::from_bin_op(BinOp::MULTIPLY);
+                    let resp = LexerToken::from_mul_op(MulOp::MULTIPLY);
 
                     return Ok((StateResponse::CONTINUE, LexerStateDescriptor::START, Some(resp)))
                 }
