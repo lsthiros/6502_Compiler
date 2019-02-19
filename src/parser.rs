@@ -82,9 +82,9 @@ struct FuncDecl {
     args: Vec<String>
 }
 
-enum Term<'a> {
+enum Term {
     Node{
-        left: &'a Term<'a>,
+        left: Box<Term>,
         mul_type: MulOp
     },
     Terminal(Factor)
@@ -99,17 +99,17 @@ fn get_factor<I>(token_stream: &mut TokenStream<I>) -> Result<Factor, Unexpected
     return Ok(Factor::Numeric(numeric.number.unwrap()))
 }
 
-fn get_term<'a, I>(token_stream: &mut TokenStream<I>) -> Result<&'a Term, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+fn get_term<I>(token_stream: &mut TokenStream<I>) -> Result<Box<Term>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
     if let Some(op) = token_stream.accept(TokenType::MUL_OP) {
         let ret = Term::Node {
             mul_type: op.mul_op.unwrap(),
             left: get_term(token_stream)?
         };
-        return Ok(&ret)
+        return Ok(Box::new(ret))
     }
 
     let terminal: Term = Term::Terminal(get_factor(token_stream)?);
-    return Ok(&terminal)
+    return Ok(Box::new(terminal))
 }
 
 fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, UnexpectedTokenError> where I: Iterator<Item = LexerToken>{
