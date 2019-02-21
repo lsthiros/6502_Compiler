@@ -50,6 +50,21 @@ impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
         }
     }
 
+    fn multi(&mut self, types: Vec<TokenType>) -> Option<LexerToken> {
+        if (self.is_eof()) {
+            return None;
+        }
+
+        let mut itt = types.iter();
+        let top_token: &LexerToken = self.0.peek().unwrap();
+        if types.contains(&top_token.token_type) {
+            return Some(self.0.next().unwrap().clone());
+        }
+        else {
+            return None;
+        }
+    }
+
     fn is_eof(&mut self) -> bool {
         self.0.peek().is_none()
     }
