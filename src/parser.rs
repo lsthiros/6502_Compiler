@@ -1,96 +1,21 @@
-use std::iter::Peekable;
-use std::error::Error;
-use std::fmt;
-
 use crate::lexer::LexerToken;
 use crate::lexer::TokenType;
-use crate::lexer::MulOp;
 use crate::lexer::SumOp;
+use crate::lexer::MulOp;
 use crate::lexer::RelOp;
+
+use crate::token_stream::TokenStream;
+use crate::token_stream::UnexpectedTokenError;
+
+enum BinOp {
+    Sum(SumOp),
+    Mult(MulOp),
+    Rel(RelOp)
+}
 
 enum Factor {
     Id(String),
     Numeric(f64)
-}
-
-#[derive(Debug)]
-struct UnexpectedTokenError {
-    expected: TokenType,
-    actual: Option<TokenType>
-}
-
-impl fmt::Display for UnexpectedTokenError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(actual_type) = &self.actual {
-            write!(f, "Expected token {:?} but found {:?}", self.expected, actual_type)
-        }
-        else {
-            write!(f, "Expected token {:?} but found EOF", self.expected)
-        }
-    }
-}
-
-impl Error for UnexpectedTokenError {
-
-}
-
-struct TokenStream<I: Iterator<Item = LexerToken>> (Peekable<I>);
-
-impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
-    fn accept(&mut self, expected: TokenType) -> Option<LexerToken> {
-        if let Some(top) = self.0.peek() {
-            if top.token_type == expected {
-                Some(self.0.next().unwrap().clone())
-            }
-            else {
-                None
-            }
-        }
-        else {
-            None
-        }
-    }
-
-    fn multi(&mut self, types: Vec<TokenType>) -> Option<LexerToken> {
-        if (self.is_eof()) {
-            return None;
-        }
-
-        let mut itt = types.iter();
-        let top_token: &LexerToken = self.0.peek().unwrap();
-        if types.contains(&top_token.token_type) {
-            return Some(self.0.next().unwrap().clone());
-        }
-        else {
-            return None;
-        }
-    }
-
-    fn is_eof(&mut self) -> bool {
-        self.0.peek().is_none()
-    }
-
-    fn expect(&mut self, expected: TokenType) -> Result<LexerToken, UnexpectedTokenError> {
-        if let Some(result) = self.accept(expected) {
-            Ok(result)
-        }
-        else {
-            let actual: Option<TokenType>;
-
-            if let Some(top) = self.0.peek() {
-                actual = Some(top.token_type);
-            }
-            else {
-                actual = None;
-            }
-
-            let error = UnexpectedTokenError {
-                actual: actual,
-                expected: expected
-            };
-            return Err(error)
-        }
-    }
 }
 
 struct FuncDecl {
@@ -98,11 +23,6 @@ struct FuncDecl {
     args: Vec<String>
 }
 
-enum BinOp {
-    Sum(SumOp),
-    Mult(MulOp),
-    Rel(RelOp)
-}
 
 enum AstExprNode {
     Node{
