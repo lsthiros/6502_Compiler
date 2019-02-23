@@ -6,6 +6,7 @@ use crate::lexer::LexerToken;
 use crate::lexer::TokenType;
 use crate::lexer::MulOp;
 use crate::lexer::SumOp;
+use crate::lexer::RelOp;
 
 enum Factor {
     Id(String),
@@ -97,14 +98,38 @@ struct FuncDecl {
     args: Vec<String>
 }
 
-enum Term {
+enum BinOp {
+    Sum(SumOp),
+    Mult(MulOp),
+    Rel(RelOp)
+}
+
+enum AstExprNode {
     Node{
-        left: Box<Term>,
-        mul_type: MulOp
+        left: Box<AstExprNode>,
+        op_type: BinOp
     },
     Terminal(Factor)
 }
 
+impl BinOp {
+    fn from_token_type(token_type: TokenType, token: &LexerToken) -> Option<BinOp> {
+        match token_type {
+            TokenType::SUM_OP => {
+                Some(BinOp::Sum(token.sum_op.unwrap()))
+            }
+            TokenType::MUL_OP => {
+                Some(BinOp::Mult(token.mul_op.unwrap()))
+            }
+            TokenType::REL_OP => {
+                Some(BinOp::Rel(token.rel_op.unwrap()))
+            }
+            _ => {
+                None
+            }
+        }
+    }
+}
 
 fn get_factor<I>(token_stream: &mut TokenStream<I>) -> Result<Factor, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
     if let Some(id) = token_stream.accept(TokenType::IDENTIFIER) {
@@ -114,17 +139,29 @@ fn get_factor<I>(token_stream: &mut TokenStream<I>) -> Result<Factor, Unexpected
     return Ok(Factor::Numeric(numeric.number.unwrap()))
 }
 
-fn get_term<I>(token_stream: &mut TokenStream<I>) -> Result<Box<Term>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+fn get_term<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
     if let Some(op) = token_stream.accept(TokenType::MUL_OP) {
-        let ret = Term::Node {
-            mul_type: op.mul_op.unwrap(),
+        let ret = AstExprNode::Node {
+            op_type: BinOp::Mult(op.mul_op.unwrap()),
             left: get_term(token_stream)?
         };
         return Ok(Box::new(ret))
     }
 
-    let terminal: Term = Term::Terminal(get_factor(token_stream)?);
+    let terminal: AstExprNode = AstExprNode::Terminal(get_factor(token_stream)?);
     return Ok(Box::new(terminal))
+}
+
+fn get_sum<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    if let Some(op) = token_stream.accept(TokenType::SUM_OP) {
+        let ret = AstExprNode::Node {
+            op_type: BinOp::from_token_type(TokenType::SUM_OP, &op).unwrap(), 
+            left: get_term(token_stream)?
+        };
+        return Ok(Box::new(ret))
+    }
+
+    return Ok(get_sum(token_stream)?)
 }
 
 fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, UnexpectedTokenError> where I: Iterator<Item = LexerToken>{
