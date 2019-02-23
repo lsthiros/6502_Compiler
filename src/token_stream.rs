@@ -62,22 +62,36 @@ impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
         self.0.peek().is_none()
     }
 
+    fn get_actual(&mut self) -> Option<TokenType> {
+        if let Some(top) = self.0.peek() {
+            return Some(top.token_type);
+        }
+        else {
+            return None;
+        }
+    }
+
+    pub fn expect_multi(&mut self, types: Vec<TokenType>) -> Result<LexerToken, UnexpectedTokenError> {
+        if let Some(result) = self.multi(types) {
+            return Ok(result);
+        }
+        else {
+            let error = UnexpectedTokenError {
+                actual: self.get_actual(),
+                // TODO: Update the error to support multiple expected types
+                expected: TokenType::SUM_OP,
+            };
+            return Err(error)
+        }
+    }
+
     pub fn expect(&mut self, expected: TokenType) -> Result<LexerToken, UnexpectedTokenError> {
         if let Some(result) = self.accept(expected) {
             Ok(result)
         }
         else {
-            let actual: Option<TokenType>;
-
-            if let Some(top) = self.0.peek() {
-                actual = Some(top.token_type);
-            }
-            else {
-                actual = None;
-            }
-
             let error = UnexpectedTokenError {
-                actual: actual,
+                actual: self.get_actual(),
                 expected: expected
             };
             return Err(error)

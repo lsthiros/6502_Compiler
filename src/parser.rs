@@ -51,37 +51,45 @@ impl BinOp {
     }
 }
 
-fn get_factor<I>(token_stream: &mut TokenStream<I>) -> Result<Factor, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
-    if let Some(id) = token_stream.accept(TokenType::IDENTIFIER) {
-        return Ok(Factor::Id(id.label.unwrap()))
-    }
-    let numeric = token_stream.expect(TokenType::NUMBER)?;
-    return Ok(Factor::Numeric(numeric.number.unwrap()))
+trait ConstructsAst<I: Iterator<Item = LexerToken>> {
+    fn construct_ast(&self, token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError>;
 }
 
-fn get_term<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
-    if let Some(op) = token_stream.accept(TokenType::MUL_OP) {
-        let ret = AstExprNode::Node {
-            op_type: BinOp::Mult(op.mul_op.unwrap()),
-            left: get_term(token_stream)?
-        };
-        return Ok(Box::new(ret))
-    }
-
-    let terminal: AstExprNode = AstExprNode::Terminal(get_factor(token_stream)?);
-    return Ok(Box::new(terminal))
+struct BinOpConstructor<'a, I: Iterator<Item = LexerToken>> {
+    next: &'a ConstructsAst<I>,
+    op_type: TokenType
 }
 
-fn get_sum<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
-    if let Some(op) = token_stream.accept(TokenType::SUM_OP) {
-        let ret = AstExprNode::Node {
-            op_type: BinOp::from_token_type(TokenType::SUM_OP, &op).unwrap(), 
-            left: get_term(token_stream)?
-        };
-        return Ok(Box::new(ret))
-    }
+impl<'a, I: Iterator<Item = LexerToken>> ConstructsAst<I> for BinOpConstructor<'a, I> {
+    fn construct_ast(&self, token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> {
+        if let Some(op) = token_stream.accept(self.op_type) {
+            let ret = AstExprNode::Node {
+                op_type: BinOp::from_token_type(self.op_type, &op).unwrap(), 
+                left: self.construct_ast(token_stream)?
+            };
+            return Ok(Box::new(ret))
+        }
 
-    return Ok(get_sum(token_stream)?)
+        return Ok(self.next.construct_ast(token_stream)?)
+    }
+}
+
+struct FactorTerminalConstructor {
+    // Zero size struct to hold trait for returning a terminating "Factor" node
+}
+
+impl<I: Iterator<Item = LexerToken>> ConstructsAst<I> for FactorTerminalConstructor {
+    fn construct_ast(&self, token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> {
+        let factor: Factor;
+        if let Some(id) = token_stream.accept(TokenType::IDENTIFIER) {
+            factor = Factor::Id(id.label.unwrap());
+        }
+        else {
+            let numeric = token_stream.expect(TokenType::NUMBER)?;
+            factor = Factor::Numeric(numeric.number.unwrap());
+        }
+        return Ok(Box::new(AstExprNode::Terminal(factor)))
+    }
 }
 
 fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, UnexpectedTokenError> where I: Iterator<Item = LexerToken>{
