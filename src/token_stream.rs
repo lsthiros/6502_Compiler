@@ -7,7 +7,7 @@ use crate::lexer::LexerToken;
 
 #[derive(Debug)]
 pub struct UnexpectedTokenError {
-    expected: TokenType,
+    expected: Vec<TokenType>,
     actual: Option<TokenType>
 }
 
@@ -43,7 +43,7 @@ impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
         }
     }
 
-    pub fn multi(&mut self, types: Vec<TokenType>) -> Option<LexerToken> {
+    pub fn multi(&mut self, types: &Vec<TokenType>) -> Option<LexerToken> {
         if self.is_eof() {
             return None;
         }
@@ -71,15 +71,14 @@ impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
         }
     }
 
-    pub fn expect_multi(&mut self, types: Vec<TokenType>) -> Result<LexerToken, UnexpectedTokenError> {
+    pub fn expect_multi(&mut self, types: &Vec<TokenType>) -> Result<LexerToken, UnexpectedTokenError> {
         if let Some(result) = self.multi(types) {
             return Ok(result);
         }
         else {
             let error = UnexpectedTokenError {
                 actual: self.get_actual(),
-                // TODO: Update the error to support multiple expected types
-                expected: TokenType::SUM_OP,
+                expected: types.clone(),
             };
             return Err(error)
         }
@@ -92,7 +91,7 @@ impl<I: Iterator<Item = LexerToken>> TokenStream<I> {
         else {
             let error = UnexpectedTokenError {
                 actual: self.get_actual(),
-                expected: expected
+                expected: vec![expected]
             };
             return Err(error)
         }

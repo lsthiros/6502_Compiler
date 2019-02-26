@@ -13,8 +13,10 @@ fn main() {
     }
     else {
         let contents: String = fs::read_to_string(&args[1]).expect("Could not open file");
-        for token in lexer::lex_string(contents) {
+        let tokens = lexer::lex_string(contents);
+        for token in &tokens {
             println!("{:?}", token)
         }
+        let _ = parser::parse_stream(&tokens);
     }
 }

@@ -7,12 +7,14 @@ use crate::lexer::RelOp;
 use crate::token_stream::TokenStream;
 use crate::token_stream::UnexpectedTokenError;
 
+#[derive(Debug)]
 enum BinOp {
     Sum(SumOp),
     Mult(MulOp),
     Rel(RelOp)
 }
 
+#[derive(Debug)]
 enum Factor {
     Id(String),
     Numeric(f64)
@@ -24,10 +26,12 @@ struct FuncDecl {
 }
 
 
+#[derive(Debug)]
 enum AstExprNode {
     Node{
         left: Box<AstExprNode>,
-        op_type: BinOp
+        op_type: BinOp,
+        next: Box<AstExprNode>
     },
     Terminal(Factor)
 }
@@ -62,15 +66,17 @@ struct BinOpConstructor<'a, I: Iterator<Item = LexerToken>> {
 
 impl<'a, I: Iterator<Item = LexerToken>> ConstructsAst<I> for BinOpConstructor<'a, I> {
     fn construct_ast(&self, token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> {
+        let left: Box<AstExprNode> = self.next.construct_ast(token_stream)?;
         if let Some(op) = token_stream.accept(self.op_type) {
             let ret = AstExprNode::Node {
+                left: left,
                 op_type: BinOp::from_token_type(self.op_type, &op).unwrap(), 
-                left: self.construct_ast(token_stream)?
+                next: self.construct_ast(token_stream)?
             };
             return Ok(Box::new(ret))
         }
 
-        return Ok(self.next.construct_ast(token_stream)?)
+        return Ok(left)
     }
 }
 
@@ -119,17 +125,29 @@ fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, Unexp
     return Ok(result);
 }
 
-fn parse_stream(token_stream: Vec<LexerToken>) -> Result<String, UnexpectedTokenError> {
+pub fn parse_stream(token_stream: &Vec<LexerToken>) -> Result<String, UnexpectedTokenError> {
     let mut stream = TokenStream(token_stream.iter().cloned().peekable());
 
-    if let Some(def_token) = stream.accept(TokenType::DEF) {
-        let func = get_func_decl(&mut stream)?;
-    }
-    else if let Some(ext) = stream.accept(TokenType::EXTERN) {
-        let func = get_func_decl(&mut stream)?;
-    }
-    else {
+    let term_parse = FactorTerminalConstructor {};
+    let mult_parse = BinOpConstructor::<std::iter::Cloned::<std::slice::Iter::<'_, LexerToken>>> {
+        op_type: TokenType::MUL_OP,
+        next: &term_parse
+    };
+    let sum_parse = BinOpConstructor::<std::iter::Cloned::<std::slice::Iter::<'_, LexerToken>>> {
+        op_type: TokenType::SUM_OP,
+        next: &mult_parse
+    };
 
-    }
+    let node: Box<AstExprNode> = sum_parse.construct_ast(&mut stream)?;
+    // if let Some(def_token) = stream.accept(TokenType::DEF) {
+    //     let func = get_func_decl(&mut stream)?;
+    // }
+    // else if let Some(ext) = stream.accept(TokenType::EXTERN) {
+    //     let func = get_func_decl(&mut stream)?;
+    // }
+    // else {
+// 
+    // }
+    println!("{:?}", node);
     unimplemented!();
 }
