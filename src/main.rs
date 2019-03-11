@@ -1,6 +1,7 @@
 mod lexer;
 mod parser;
 mod token_stream;
+mod graphviz;
 
 use std::fs;
 use std::env;
