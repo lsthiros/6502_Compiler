@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
 
 // Trait system needs to allow for graph construction.
 // Main data structure holds basic data, like node
@@ -23,7 +22,7 @@ struct NodeEntry <'a> {
     children: Vec<&'a CreatesGraphviz>
 }
 
-pub fn emit_graph(root: &CreatesGraphviz) {
+pub fn emit_graph(root: &CreatesGraphviz) -> Vec<(String, String)> {
     let mut node_listing:  HashMap<*const CreatesGraphviz, NodeEntry> = HashMap::new();
     let mut connections: Vec<(String, String)> = Vec::new();
     let mut stack: Vec<&CreatesGraphviz> = vec![root];
@@ -63,4 +62,5 @@ pub fn emit_graph(root: &CreatesGraphviz) {
             node_listing.insert(top_node as *const CreatesGraphviz, node);
         }
     }
+    return connections;
 }

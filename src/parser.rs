@@ -7,6 +7,9 @@ use crate::lexer::RelOp;
 use crate::token_stream::TokenStream;
 use crate::token_stream::UnexpectedTokenError;
 
+use crate::graphviz::CreatesGraphviz;
+use crate::graphviz::emit_graph;
+
 #[derive(Debug)]
 enum BinOp {
     Sum(SumOp),
@@ -34,6 +37,27 @@ enum AstExprNode {
         next: Box<AstExprNode>
     },
     Terminal(Factor)
+}
+
+impl CreatesGraphviz for AstExprNode {
+
+    fn get_name(&self) -> String {
+        return String::from("hullo");
+    }
+
+    fn get_connections(&self) -> Vec<&CreatesGraphviz> {
+        match self {
+            AstExprNode::Terminal(_) => {
+                return vec![];
+            }
+            AstExprNode::Node {
+                left, op_type, next
+            } => {
+                let _ = op_type;
+                return vec![left.as_ref(), next.as_ref()];
+            }
+        }
+    }
 }
 
 impl BinOp {
@@ -139,6 +163,7 @@ pub fn parse_stream(token_stream: &Vec<LexerToken>) -> Result<String, Unexpected
     };
 
     let node: Box<AstExprNode> = sum_parse.construct_ast(&mut stream)?;
+    let result = emit_graph(node.as_ref());
     // if let Some(def_token) = stream.accept(TokenType::DEF) {
     //     let func = get_func_decl(&mut stream)?;
     // }
@@ -148,6 +173,6 @@ pub fn parse_stream(token_stream: &Vec<LexerToken>) -> Result<String, Unexpected
     // else {
 // 
     // }
-    println!("{:?}", node);
+    println!("{:?}", result);
     unimplemented!();
 }
