@@ -1,4 +1,5 @@
 use std::str::Chars;
+use std::fmt;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -41,12 +42,38 @@ pub enum MulOp {
     MULTIPLY,
     DIVIDE
 }
+impl fmt::Display for MulOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            MulOp::MULTIPLY => {
+                write!(f, "*")
+            }
+            MulOp::DIVIDE => {
+                write!(f, "/")
+            }
+        }
+    }
+}
 
 #[derive(Debug)]
 #[derive(Copy, Clone)]
+#[derive(PartialEq)]
 pub enum SumOp {
     ADD,
     SUBTRACT
+}
+
+impl fmt::Display for SumOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            SumOp::ADD => {
+                write!(f, "+")
+            }
+            SumOp::SUBTRACT => {
+                write!(f, "-")
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -57,6 +84,28 @@ pub enum RelOp {
     EQUAL,
     GREATER_THAN,
     GREATER_THAN_EQ
+}
+
+impl fmt::Display for RelOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RelOp::LESS_THAN => {
+                write!(f, "<")
+            }
+            RelOp::LESS_THAN_EQ => {
+                write!(f, "<=")
+            }
+            RelOp::EQUAL => {
+                write!(f, "==")
+            }
+            RelOp::GREATER_THAN => {
+                write!(f, ">")
+            }
+            RelOp::GREATER_THAN_EQ => {
+                write!(f, ">=")
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

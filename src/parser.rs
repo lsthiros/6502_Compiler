@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::lexer::LexerToken;
 use crate::lexer::TokenType;
 use crate::lexer::SumOp;
@@ -17,17 +19,45 @@ enum BinOp {
     Rel(RelOp)
 }
 
+impl fmt::Display for BinOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BinOp::Sum(sum_op) => {
+                write!(f, "{}", sum_op)
+            }
+            BinOp::Mult(mul_op) => {
+                write!(f, "{}", mul_op)
+            }
+            BinOp::Rel(rel_op) => {
+                write!(f, "{}", rel_op)
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 enum Factor {
     Id(String),
     Numeric(f64)
 }
 
+impl fmt::Display for Factor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Factor::Id(id) => {
+                write!(f, "{}", id)
+            }
+            Factor::Numeric(numeric) => {
+                write!(f, "{}", numeric)
+            }
+        }
+    }
+}
+
 struct FuncDecl {
     name: String,
     args: Vec<String>
 }
-
 
 #[derive(Debug)]
 enum AstExprNode {
@@ -44,10 +74,14 @@ impl CreatesGraphviz for AstExprNode {
     fn get_name(&self) -> String {
         match self {
             AstExprNode::Terminal(terminal) => {
-
+                format!("{}", terminal)
+            }
+            AstExprNode::Node {
+                left: _, op_type, next: _
+            } => {
+                format!("{}", op_type)
             }
         }
-        return String::from("hullo");
     }
 
     fn get_connections(&self) -> Vec<&CreatesGraphviz> {
