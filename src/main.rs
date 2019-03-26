@@ -15,9 +15,7 @@ fn main() {
     else {
         let contents: String = fs::read_to_string(&args[1]).expect("Could not open file");
         let tokens = lexer::lex_string(contents);
-        for token in &tokens {
-            println!("{:?}", token)
-        }
-        let _ = parser::parse_stream(&tokens);
+        let result = parser::parser::parse_stream(&tokens);
+        println!("done! {:?}", result.expect("WHOOPS"));
     }
 }
