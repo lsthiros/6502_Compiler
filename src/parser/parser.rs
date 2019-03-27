@@ -12,9 +12,38 @@ use crate::parser::bin_op::AstExprNode;
 use crate::parser::bin_op::expression;
 
 
+type FuncArg = String;
+
+impl CreatesGraphviz for FuncArg {
+    fn get_name(&self) -> String {
+        return self.clone();
+    }
+
+    fn get_connections(&self) -> Vec<&CreatesGraphviz> {
+        return vec![];
+    }
+}
+
+
 struct FuncDecl {
     name: String,
-    args: Vec<String>
+    args: Vec<FuncArg>
+}
+
+
+impl CreatesGraphviz for FuncDecl {
+
+    fn get_name(&self) -> String {
+        return self.name.clone();
+    }
+
+    fn get_connections(&self) -> Vec<&CreatesGraphviz> {
+        let mut result: Vec<&CreatesGraphviz> = Vec::new();
+        for arg in &self.args {
+            result.push(arg)
+        }
+        return result;
+    }
 }
 
 
@@ -45,6 +74,7 @@ fn get_func_decl<I>(token_stream: &mut TokenStream<I>) -> Result<FuncDecl, Unexp
     return Ok(result);
 }
 
+
 enum Statement {
     Select {
         condition: Box<AstExprNode>,
@@ -53,6 +83,7 @@ enum Statement {
     },
     ReturnExpr(Box<AstExprNode>)
 }
+
 
 impl CreatesGraphviz for Statement {
     fn get_name(&self) -> String {
@@ -85,6 +116,7 @@ impl CreatesGraphviz for Statement {
         }
     }
 }
+
 
 fn statement<I>(token_stream: &mut TokenStream<I>) -> Result<Box<Statement>, UnexpectedTokenError> where I: Iterator<Item = LexerToken>{
     let token = token_stream.expect_multi(&vec![TokenType::IF, TokenType::RETURN])?;
@@ -121,11 +153,75 @@ fn statement<I>(token_stream: &mut TokenStream<I>) -> Result<Box<Statement>, Une
     }
 }
 
+
+enum PrimaryStatement {
+    Definition {
+        decl: FuncDecl,
+        inner_statement: Box<Statement>
+    },
+    Extern(FuncDecl)
+}
+
+
+impl CreatesGraphviz for PrimaryStatement {
+    fn get_name(&self) -> String  {
+        match self {
+            PrimaryStatement::Extern(_) => {
+                String::from("Extern")
+            }
+            PrimaryStatement::Definition {
+                decl: _, inner_statement: _
+            } => {
+                String::from("Def")
+            }
+        }
+    }
+
+    fn get_connections(&self) -> Vec<&CreatesGraphviz> {
+        match self {
+            PrimaryStatement::Definition {
+                decl, inner_statement
+            } => {
+                return vec![decl, inner_statement.as_ref()]
+            }
+            PrimaryStatement::Extern(decl) => {
+                return vec![decl]
+            }
+        }
+    }
+}
+
+
+fn primary<I>(token_stream: &mut TokenStream<I>) -> Result<PrimaryStatement, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    let token = token_stream.expect_multi(&vec![TokenType::EXTERN, TokenType::DEF])?;
+    let result: PrimaryStatement;
+
+    match token.token_type {
+        TokenType::EXTERN => {
+            let decl = get_func_decl(token_stream)?;
+            result = PrimaryStatement::Extern(decl);
+        }
+        TokenType::DEF => {
+            let decl = get_func_decl(token_stream)?;
+            let statement = statement(token_stream)?;
+            result = PrimaryStatement::Definition {
+                decl: decl,
+                inner_statement: statement
+            }
+        }
+        _ => {
+            unreachable!()
+        }
+    }
+    return Ok(result);
+}
+
+
 pub fn parse_stream(token_stream: &Vec<LexerToken>) -> Result<String, UnexpectedTokenError> {
     let mut stream = TokenStream(token_stream.iter().cloned().peekable());
 
-    let state = statement(&mut stream)?;
-    let result = Graphviz::from(state.as_ref() as &CreatesGraphviz);
+    let state = primary(&mut stream)?;
+    let result = Graphviz::from(&state as &CreatesGraphviz);
 
     result.write_file(String::from("./a.out"));
     return Ok(String::from("Ok"));

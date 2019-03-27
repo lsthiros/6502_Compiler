@@ -149,7 +149,7 @@ fn factor<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, Unex
             result = Box::new(AstExprNode::Terminal(factor))
         }
         TokenType::L_PAREN => {
-            let expression = sum_expr(token_stream)?;
+            let expression = expression(token_stream)?;
             let _ = token_stream.expect(TokenType::R_PAREN)?;
             result = Box::new(AstExprNode::SubNode(expression));
         }
@@ -184,8 +184,12 @@ fn sum_expr<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, Un
     construct_ast_inner(token_stream, TokenType::SUM_OP, mult_expr, sum_expr)
 }
 
+fn rel_expr<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    construct_ast_inner(token_stream, TokenType::REL_OP, sum_expr, rel_expr)
+}
+
 pub fn expression<I>(token_stream: &mut TokenStream<I>) -> Result<Box<AstExprNode>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
-    sum_expr(token_stream)
+    rel_expr(token_stream)
 }
 
 fn get_optional_call<I>(token_stream: &mut TokenStream<I>) -> Result<Option<Vec<Box<AstExprNode>>>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
@@ -194,7 +198,7 @@ fn get_optional_call<I>(token_stream: &mut TokenStream<I>) -> Result<Option<Vec<
         if token_stream.accept(TokenType::R_PAREN).is_none() {
             let mut continue_list = true;
             while continue_list {
-                arglist.push(sum_expr(token_stream)?);
+                arglist.push(expression(token_stream)?);
                 continue_list = token_stream.accept(TokenType::COMMA).is_some();
             }
         }
