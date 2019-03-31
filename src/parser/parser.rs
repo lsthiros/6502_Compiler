@@ -220,9 +220,54 @@ fn primary<I>(token_stream: &mut TokenStream<I>) -> Result<PrimaryStatement, Une
 pub fn parse_stream(token_stream: &Vec<LexerToken>) -> Result<String, UnexpectedTokenError> {
     let mut stream = TokenStream(token_stream.iter().cloned().peekable());
 
-    let state = primary(&mut stream)?;
-    let result = Graphviz::from(&state as &CreatesGraphviz);
+    let state = program(&mut stream)?;
+    let result = Graphviz::from(state.as_ref() as &CreatesGraphviz);
 
     result.write_file(String::from("./a.out"));
     return Ok(String::from("Ok"));
+}
+
+
+struct Program {
+    primary: PrimaryStatement,
+    next: Option<Box<Program>>
+}
+
+impl CreatesGraphviz for Program {
+    fn get_name(&self) -> String {
+        return self.primary.get_name()
+    }
+
+    fn get_connections(&self) -> Vec<&CreatesGraphviz> {
+        match &self.next {
+            Some(next_node) => {
+                let mut result = self.primary.get_connections();
+                result.push(next_node.as_ref());
+                return result;
+            }
+            None => {
+                return self.primary.get_connections()
+            }
+        }
+    }
+}
+
+
+fn program<I>(token_stream: &mut TokenStream<I>) -> Result<Box<Program>, UnexpectedTokenError> where I: Iterator<Item = LexerToken> {
+    let primary = primary(token_stream)?;
+    let next: Option<Box<Program>>;
+
+    if token_stream.is_eof() {
+        next = None;
+    }
+    else {
+        next = Some(program(token_stream)?);
+    }
+
+    let result = Program {
+        primary: primary,
+        next: next
+    };
+
+    return Ok(Box::new(result));
 }

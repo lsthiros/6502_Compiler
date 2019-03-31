@@ -1,0 +1,25 @@
+extern printNum(number)
+
+def or(a, b)
+    if (a == 1)
+        return 1
+    else
+    if (b == 1)
+        return 1
+    else
+        return 0
+
+def fibonacci(num)
+    if (num == 0)
+        return 0
+    else
+    if (or(num == 1, num == 2) == 1)
+        return 1
+    else
+        return fibonacciItt(num - 2, 1, 1)
+
+def fibonacciItt(itt, secondLatest, latest)
+    if (itt == 0) 
+        return latest
+    else
+        return fibonacciItt(itt - 1, latest, latest + secondLatest)

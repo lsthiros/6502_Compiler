@@ -97,8 +97,19 @@ impl CreatesGraphviz for AstExprNode {
 
     fn get_connections(&self) -> Vec<&CreatesGraphviz> {
         match self {
-            AstExprNode::Terminal(_) => {
-                return vec![];
+            AstExprNode::Terminal(terminal) => {
+                if let Factor::Id{id: _, optional_call} = terminal {
+                    let mut ret: Vec<&CreatesGraphviz> = Vec::new();
+                    if let Some(arglist) = optional_call {
+                        for arg in arglist {
+                            ret.push(arg.as_ref())
+                        }
+                    }
+                    return ret;
+                }
+                else {
+                    return vec![]
+                }
             }
             AstExprNode::Node {
                 left, op_type, next
